@@ -16,20 +16,43 @@ def add_password(password_object, password_list):
     return new_list
 
 
+def prompt_account_name():
+    account_name = Prompt.ask("Enter website name").lower()
+    return account_name
+
+
 def prompt_add_password():
-    website_name = Prompt.ask("Enter website name").lower()
+    website_name = prompt_account_name()
     username = Prompt.ask("Enter username for {}".format(website_name))
     password = Prompt.ask("Enter password")
-    return {"website_name": website_name, "username": username, "password": password}
+    return {
+        "website_name": website_name,
+        "username": username,
+        "password": password}
 
 
 def handle_add_account(password_list, master_password):
     account_object = prompt_add_password()
     new_password_list = add_password(account_object, password_list)
-    write(new_password_list, master_password)
+    save_account_list(new_password_list, master_password)
     console.print("Your new account and password have been saved \n")
     console.print("Returning...")
     return new_password_list
+
+
+def print_accounts(account_list):
+    table = Table(title="Accounts")
+
+    table.add_column("Account name", style="cyan")
+    table.add_column("username", style="magenta")
+    table.add_column("password", style="magenta")
+
+    for index in range(len(account_list)):
+        account = account_list[index]
+        table.add_row(
+            account["website_name"], account["username"], account["password"])
+
+    console.print(table, justify="center")
 
 
 def load_account_list(password):
@@ -38,7 +61,7 @@ def load_account_list(password):
     return decrypt(ciphered_data, password)
 
 
-def write(password_list, password):
+def save_account_list(password_list, password):
     """Save the account list in the encrypted vault"""
     ciphered_list = encrypt(password_list, password)
     save_data_to_file("./ciphered_vault", ciphered_list)
@@ -61,7 +84,7 @@ def handle_register_new_account():
     console.print("This is a new account !\n")
     password = Prompt.ask("Please enter a master password")
     console.print("")
-    write([], password)
+    save_account_list([], password)
     return [], password
 
 
@@ -80,6 +103,60 @@ def show_options():
     table.add_row("6", "Delete everything")
 
     console.print(table, justify="center")
+
+
+def handle_show_account(account_list):
+    account_name = prompt_account_name()
+    console.print("\n")
+
+    selected_account = None
+    for account in account_list:
+        if account["website_name"] == account_name:
+            selected_account = account
+
+    print_accounts([selected_account])
+
+
+def delete_account_from_list(account_list, account_name):
+    new_account_list = []
+    for account in account_list:
+        if account["website_name"] != account_name:
+            new_account_list.append(account)
+
+    return new_account_list
+    # return [account for account in account_list
+    #   if account["website_name"] != account_name]
+
+
+def handle_delete_account(account_list, password):
+    nbr_accounts = len(account_list)
+    website_name = prompt_account_name()
+    console.print("\n")
+
+    new_list = delete_account_from_list(account_list, website_name)
+    save_account_list(new_list, password)
+
+    if len(new_list) == nbr_accounts:
+        console.print(
+            "No accounts were found matching this website name!")
+    else:
+        console.print(
+            "Account {} successfully deleted from vault".format(website_name))
+
+    return new_list
+
+
+def handle_delete_all_accounts(password):
+    empty_list = []
+    save_account_list(empty_list, password)
+    console.print(
+            "All account have been successfully deleted from vault")
+    return empty_list
+
+
+def handle_exit():
+    console.print("Quitting...")
+    quit()
 
 
 def main():
@@ -105,40 +182,16 @@ def main():
         if option == "1":
             pList = handle_add_account(pList, master_password)
         elif option == "2":
-            a = Prompt.ask("Enter account website name").lower()
-            console.print("\n")
-
-            temp = 0
-            b = None
-            for i in range(len(pList)):
-                if pList[i]["website_name"] == a:
-                    b = pList[i]
-
-            console.print(b)
-
+            handle_show_account(pList)
         elif option == "3":
-            l = len(pList)
-            a = Prompt.ask("Enter website name").lower()
-            console.print("\n")
-
-            temp1 = 0
-            for i in range(0, len(pList)):
-                if pList[i]["website_name"] == a:
-                    del pList[i]
-                    break
-
-            if len(pList) == l:
-                console.print("No accounts were found matching this website name!")
-            else:
-                console.print("Account {} successfully deleted from vault".format(a))
-
+            pList = handle_delete_account(pList, master_password)
         elif option == "4":
-            console.print("Quitting...")
-            quit()
+            handle_exit()
         elif option == "5":
             console.print(pList)
+            print_accounts(pList)
         elif option == "6":
-            pass
+            pList = handle_delete_all_accounts(master_password)
         else:
             print("Invalid command...")
             print("Restarting...")
